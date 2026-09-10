@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>poster-desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --kraft: #E4D5B7;
+    --kraft-dark: #C9B283;
+    --paper: #FBF6EC;
+    --ink: #1B2A41;
+    --ink-soft: #2C3E58;
+    --stamp: #A83B2E;
+    --charcoal: #241F1C;
+    --sorting-green: #4B5842;
+    --rule: rgba(36,31,28,0.16);
+    --sent: #4B5842;
+    --skipped: #7A6A3E;
+    --failed: #A83B2E;
+    --dry: #2C3E58;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--charcoal);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: 'Newsreader', serif; font-weight: 500; color: var(--ink); margin: 0; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+
+  /* header */
+  header { padding: 28px 0; border-bottom: 1px solid var(--rule); }
+  .mark {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; font-size: 15px; color: var(--ink);
+  }
+  .mark svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+  /* layout */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 48px;
+    padding: 48px 0 80px;
+    align-items: start;
+  }
+
+  /* upload panel */
+  .upload-panel {
+    position: sticky;
+    top: 32px;
+    background: var(--kraft);
+    border: 1px solid var(--kraft-dark);
+    border-radius: 3px;
+    padding: 28px 26px;
+  }
+  .upload-panel h2 { font-size: 22px; margin-bottom: 6px; }
+  .upload-panel .sub { font-size: 14px; color: var(--ink-soft); margin-bottom: 24px; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--kraft-dark);
+    border-radius: 2px;
+    background: rgba(251,246,236,0.6);
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .drop-zone.drag-over { background: rgba(251,246,236,0.95); border-color: var(--stamp); }
+  .drop-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .drop-zone .icon { font-size: 28px; margin-bottom: 8px; }
+  .drop-zone p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .drop-zone p strong { color: var(--ink); }
+
+  #preview-wrap { margin-top: 14px; display: none; }
+  #preview-wrap img { width: 100%; border-radius: 2px; border: 1px solid var(--kraft-dark); }
+
+  .options-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 16px; font-size: 14px; color: var(--ink-soft);
+  }
+  .options-row input[type="checkbox"] { accent-color: var(--stamp); width: 15px; height: 15px; cursor: pointer; }
+  .options-row label { cursor: pointer; }
+
+  .btn {
+    margin-top: 18px;
+    width: 100%;
+    padding: 11px 0;
+    background: var(--ink);
+    color: #FBF6EC;
+    border: none;
+    border-radius: 2px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--ink-soft); }
+  .btn:disabled { background: var(--kraft-dark); cursor: not-allowed; }
+
+  /* result card */
+  #result-card {
+    margin-top: 20px;
+    display: none;
+    border-radius: 2px;
+    padding: 16px;
+    font-size: 13.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    line-height: 1.65;
+    word-break: break-all;
+    background: var(--ink);
+    color: #DCE3EC;
+  }
+  #result-card .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .badge-sent { background: var(--sent); color: #fff; }
+  .badge-skipped { background: var(--skipped); color: #fff; }
+  .badge-failed { background: var(--failed); color: #fff; }
+  .badge-dry_run_only { background: var(--dry); color: #fff; }
+  #result-card .k { color: #8FB1D9; }
+  #result-card .s { color: #C9D97A; }
+  #result-card .n { color: #E8A87C; }
+  #result-card .null { color: #6E7E95; }
+
+  /* applications table */
+  .table-section h2 { font-size: 26px; margin-bottom: 6px; }
+  .table-section .section-sub {
+    font-size: 14px; color: var(--ink-soft); margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .dl-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px;
+    background: var(--sorting-green);
+    color: #fff;
+    border-radius: 2px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    font-family: 'IBM Plex Sans', sans-serif;
+    transition: background 0.15s;
+  }
+  .dl-btn:hover { background: #3a4533; }
+  .dl-btn svg { width: 14px; height: 14px; }
+
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  thead th {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--ink);
+    color: #DCE3EC;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--rule); }
+  tbody tr:hover { background: rgba(228,213,183,0.25); }
+  tbody td {
+    padding: 10px 12px;
+    color: var(--ink-soft);
+    vertical-align: top;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tbody td:first-child { color: var(--charcoal); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .pill-sent { background: #d4e8d4; color: var(--sent); }
+  .pill-skipped { background: #f0e8cc; color: var(--skipped); }
+  .pill-failed { background: #f5d5d0; color: var(--failed); }
+  .pill-dry_run_only { background: #d0dce8; color: var(--dry); }
+
+  .empty-state {
+    padding: 48px 0;
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 14px;
+    border: 1px dashed var(--rule);
+    border-radius: 2px;
+  }
+
+  /* spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(251,246,236,0.3);
+    border-top-color: #FBF6EC;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* footer */
+  footer {
+    padding: 32px 0 48px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink-soft);
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 860px) {
+    .wrap { padding: 0 18px; }
+    .main-grid { grid-template-columns: 1fr; gap: 36px; }
+    .upload-panel { position: static; }
+  }
+  :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 6L12 12L21 6" stroke="#1B2A41" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="3" y="5" width="18" height="14" rx="1" stroke="#1B2A41" stroke-width="1.6"/>
+      </svg>
+      poster-desk
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="main-grid">
+
+    <!-- LEFT: upload panel -->
+    <div class="upload-panel">
+      <h2>Upload a poster</h2>
+      <p class="sub">JPEG, PNG, or WEBP — screenshot, photo, or flyer.</p>
+
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
+        <div class="icon">📋</div>
+        <p><strong>Drop image here</strong><br>or click to browse</p>
+      </div>
+
+      <div id="preview-wrap">
+        <img id="preview-img" src="" alt="poster preview">
+      </div>
+
+      <div class="options-row">
+        <input type="checkbox" id="dry-run" name="dry_run">
+        <label for="dry-run">Dry run — extract only, don't send email</label>
+      </div>
+
+      <button class="btn" id="submit-btn" disabled>Submit poster</button>
+
+      <div id="result-card"></div>
+    </div>
+
+    <!-- RIGHT: applications log -->
+    <div class="table-section">
+      <h2>Applications log</h2>
+      <div class="section-sub">
+        <span id="row-count">Loading…</span>
+        <a class="dl-btn" href="/applications/download" id="dl-link">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 2v8M5 7l3 3 3-3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 12h10" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Download Excel
+        </a>
+      </div>
+      <div class="table-wrap" id="table-wrap">
+        <div class="empty-state">No applications logged yet.</div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer class="wrap">
+  <span>A personal automation project. Not a product, not for sale.</span>
+  <span>Built with FastAPI, a vision model, and a spreadsheet.</span>
+</footer>
+
+<script>
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const previewWrap = document.getElementById('preview-wrap');
+  const previewImg = document.getElementById('preview-img');
+  const submitBtn = document.getElementById('submit-btn');
+  const dryRun = document.getElementById('dry-run');
+  const resultCard = document.getElementById('result-card');
+  const tableWrap = document.getElementById('table-wrap');
+  const rowCount = document.getElementById('row-count');
+
+  let selectedFile = null;
+
+  // drag-and-drop
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) setFile(f);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+  function setFile(f) {
+    selectedFile = f;
+    const url = URL.createObjectURL(f);
+    previewImg.src = url;
+    previewWrap.style.display = 'block';
+    submitBtn.disabled = false;
+    resultCard.style.display = 'none';
+  }
+
+  // submit
+  submitBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span>Processing…';
+    resultCard.style.display = 'none';
+
+    const fd = new FormData();
+    fd.append('file', selectedFile);
+
+    try {
+      const res = await fetch(`/process-poster?dry_run=${dryRun.checked}`, { method: 'POST', body: fd });
+      const data = await res.json();
+      showResult(data);
+      if (!dryRun.checked) loadTable();
+    } catch (err) {
+      showResult({ status: 'failed', reason: err.message });
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit poster';
+    }
+  });
+
+  function showResult(data) {
+    const status = data.status || 'failed';
+    const badgeClass = `badge-${status}`;
+    let html = `<div class="status-badge ${badgeClass}">${status.replace('_', ' ')}</div>`;
+
+    if (data.reason) {
+      html += `<div style="margin-bottom:10px;color:#E8A87C;font-size:13px;">${data.reason}</div>`;
+    }
+
+    if (data.extracted) {
+      html += renderJSON(data.extracted);
+    }
+
+    resultCard.innerHTML = html;
+    resultCard.style.display = 'block';
+  }
+
+  function renderJSON(obj) {
+    let lines = ['{'];
+    const entries = Object.entries(obj);
+    entries.forEach(([k, v], i) => {
+      const comma = i < entries.length - 1 ? ',' : '';
+      if (v === null) {
+        lines.push(`&nbsp;&nbsp;<span class="k">"${k}"</span>: <span class="null">null</span>${comma}`);
+      } else if (typeof v === 'number') {
+        lines.push(`&nbsp;&nbsp;<span class="k">"${k}"</span>: <span class="n">${v}</span>${comma}`);
+      } else {
+        lines.push(`&nbsp;&nbsp;<span class="k">"${k}"</span>: <span class="s">"${escHtml(String(v))}"</span>${comma}`);
+      }
+    });
+    lines.push('}');
+    return lines.join('<br>');
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // table
+  async function loadTable() {
+    try {
+      const res = await fetch('/applications');
+      const data = await res.json();
+      const rows = data.rows || [];
+      rowCount.textContent = rows.length === 0 ? 'No applications yet' : `${rows.length} application${rows.length !== 1 ? 's' : ''}`;
+
+      if (rows.length === 0) {
+        tableWrap.innerHTML = '<div class="empty-state">No applications logged yet.</div>';
+        return;
+      }
+
+      const cols = ['timestamp','company_name','job_title','hr_name','hr_email','location','status','notes'];
+      const labels = ['Time','Company','Role','HR Name','Email','Location','Status','Notes'];
+
+      let html = '<table><thead><tr>';
+      labels.forEach(l => { html += `<th>${l}</th>`; });
+      html += '</tr></thead><tbody>';
+
+      rows.slice().reverse().forEach(row => {
+        html += '<tr>';
+        cols.forEach((c, i) => {
+          const val = row[c] ?? '';
+          if (c === 'status') {
+            html += `<td><span class="pill pill-${val}">${val.replace('_',' ')}</span></td>`;
+          } else if (c === 'timestamp') {
+            html += `<td title="${escHtml(val)}">${escHtml(val.replace('T',' '))}</td>`;
+          } else {
+            html += `<td title="${escHtml(String(val))}">${escHtml(String(val))}</td>`;
+          }
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      tableWrap.innerHTML = html;
+    } catch {
+      rowCount.textContent = 'Could not load log';
+    }
+  }
+
+  loadTable();
+</script>
+</body>
+</html>
