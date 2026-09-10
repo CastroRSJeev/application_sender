@@ -8,6 +8,7 @@ __pycache__/
 env/
 .venv/
 venv/
+.github/
 
 # Environment variables
 .env
